@@ -12,5 +12,6 @@ Currently work in progress python based workflow for constant pH molecular dynam
 <\ul>
 
 ## Dependencies
-[Packmol](https://m3g.github.io/packmol/)
+
+[Packmol](https://m3g.github.io/packmol/) <br>
 [CpHMD GROMACS](https://gitlab.com/gromacs-constantph/constantph)
