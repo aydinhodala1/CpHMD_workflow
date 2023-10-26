@@ -5,13 +5,11 @@ Currently work in progress python based workflow for constant pH molecular dynam
 
 ## Functionality
 
-<ul>
-  <li>Two step calibration process<\li>
-  <li>Automated titration system consturction<\li>
-  <li>Automated control of titration simulation series<\li>
-<\ul>
+- Two step calibration process
+- Automated titration system consturction
+- Automated control of titration simulation series
 
 ## Dependencies
 
-[Packmol](https://m3g.github.io/packmol/) <br>
+[Packmol](https://m3g.github.io/packmol/)  
 [CpHMD GROMACS](https://gitlab.com/gromacs-constantph/constantph)
