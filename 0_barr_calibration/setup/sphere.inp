@@ -1,0 +1,8 @@
+tolerance 2.0
+output ola_sphere.pdb
+filetype pdb
+
+structure ola.pdb
+	number 1
+	inside sphere 0 0 0 20
+end structure
