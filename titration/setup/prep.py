@@ -66,16 +66,19 @@ def buf_group(n_buf: int, atom_charges: list[list[float]], dvdl_coeffs: list[flo
     #Join all lines together, with a gap between group-type settings and atom-set settings
     lambda_str = '\n'.join(
             [name_str, states_str, lam0_str, lam1_str, pka_str, dvdl_str,
-                '',atom_str, group_str, barrier_str, init_str, charge_str]
+                '',atom_str, group_str, barrier_str, init_str, buf_str, nbuf_str, charge_str]
             )
 
     return lambda_str
 
 #Reads input from input file ("input.in"). Requires each section, both number of particles
 
+
+titration_dictionary = {}
+param_dictionary = {}
+
 main_sec = False
 buf_sec = False
-titration_dictionary = {}
 titration_num = 1
 
 with open("input.in", "r") as input_file:
@@ -133,8 +136,7 @@ titration_num -=1
 total_charge = 0
 num_buf = 0
 
-for site in range(titration_num):
-    site += 1
+for site in range(1,titration_num +1):
     num_buf += buf_ratio * titration_dictionary[f'num_{site}']
     site_charge = (np.sum(titration_dictionary[f'state1_{site}']) - np.sum(titration_dictionary[f'state0_{site}'])) * titration_dictionary[f'initlam_{site}'] * titration_dictionary[f'num_{site}']
     total_charge += site_charge
@@ -143,3 +145,30 @@ charge_buf =  - total_charge / num_buf
 print(charge_buf)
 
 init_lam_buf = (charge_buf - state0_buf) / (state1_buf - state0_buf)
+index = 1
+
+param_dictionary[f'index'] = buf_group(num_buf, charge_buf, correction_buf, init_lam_buf)
+index += 1
+
+for titration_site in range(1,titration_num+1):
+    try:
+        for molecule in range(1,titration_dictionary[f"num_{titration_site}"]+1):
+            molecule = str(molecule)
+            param_dictionary[f'index'] = lambda_group(titration_dictionary[f"name_{titration_site}"] + molecule,
+                         titration_dictionary[f"indexgrp_{titration_site}"] + molecule,
+                         list(titration_dictionary[f"state0_{titration_site}"],titration_dictionary[f"state1_{titration_site}"]),
+                         titration_dictionary[f"pka_{titration_site}"],
+                         titration_dictionary[f"correction_{titration_site}"],
+                         titration_dictionary[f'initlam_{titration_site}'],
+                         index
+                         )
+            
+    except:
+        param_dictionary[f'index'] = lambda_group(titration_dictionary[f"name_{titration_site}"],
+                titration_dictionary[f"indexgrp_{titration_site}"],
+                list(titration_dictionary[f"state0_{titration_site}"],titration_dictionary[f"state1_{titration_site}"]),
+                titration_dictionary[f"pka_{titration_site}"],
+                titration_dictionary[f"correction_{titration_site}"],
+                titration_dictionary[f'initlam_{titration_site}'],
+                index
+                )
