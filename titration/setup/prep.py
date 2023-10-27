@@ -1,7 +1,11 @@
+########### Import modules ###########
+
 import numpy as np
 import os
 import re
 import shutil
+
+########### Define functions ###########
 
 def index_group(name: str, atoms: list) -> str:
     '''
@@ -14,6 +18,7 @@ def index_group(name: str, atoms: list) -> str:
     Outputs:
     index_str (str): Formatted string for appending to index.ndx file
     '''
+    #Create each index group string
     title_str = f'\n[ {name} ]'
     atom_str = f'{str(atoms)[1:-1].replace(",","")}\n\n'
 
@@ -248,8 +253,6 @@ for site in range(1,titration_num+1):
                     titration_dictionary[f"indexgrp_{site}"],
                     titration_dictionary[f'atoms_{titration_num}']
                     )
-
-print(index_dictionary)
 
 #Append index strings to index
 with open("index.ndx","a") as indexfile:
