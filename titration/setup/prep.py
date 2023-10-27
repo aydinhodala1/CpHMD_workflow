@@ -110,7 +110,7 @@ buf_sec = False
 titration_num = 1
 num_ions = 0
 
-with open("input.in", "r") as input_file:
+with open("../input.in", "r") as input_file:
     for line in input_file:
         line = line[:-1] 
         #Check if at the beginning of any sections
@@ -309,3 +309,20 @@ with open("md.mdp","a") as mdfile:
     mdfile.write(f'lambda-dynamics-number-atom-collections                = {index}\n\n')
     for i in range(1, index+1):
         mdfile.write(param_dictionary[f'{i}'])
+
+########### Prepare initial files for production ###########
+
+os.mkdir("../production")
+shutil.copy2("../charmm36-mar2019-cphmd.ff", "../production")
+
+pH_range = np.linspace(0,14,29)
+
+for pH in pH_range:
+    dirname = f"../production/{pH}"
+    os.mkdir(dirname)
+    shutil.copy2("npt.gro", dirname)
+    shutil.copy2("index.ndx", dirname)
+    shutil.copy2("topol.top", dirname)
+    with open("md.mdp","a") as mdfile:
+        mdfile.write(f'\nlambda-dynamics-simulation-ph                          = {pH}\n')
+    shutil.copy2("md.mdp", dirname)
