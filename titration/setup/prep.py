@@ -15,9 +15,9 @@ def index_group(name: str, atoms: list) -> str:
     index_str (str): Formatted string for appending to index.ndx file
     '''
     title_str = f'\n[ {name} ]'
-    atom_str = f'{str(atoms[0])[1:-1].replace(",","")}\n\n'
+    atom_str = f'{str(atoms)[1:-1].replace(",","")}\n\n'
 
-    index_str = '\n'.join(title_str, atom_str)
+    index_str = '\n'.join([title_str, atom_str])
     return index_str
 
 def lambda_group(lambda_name: str, group_name: str, atom_charges: list[list[float]], pka: float, dvdl_coeffs: list[float], init_lam: float, index: int) -> str:
@@ -168,7 +168,7 @@ titration_num -=1
 #Check that both or neither number of atoms in molecule and number of molecules are provided.
 #Causes problems generating index.ndx downstream otherwise
 for site in range(1,titration_num +1):
-    if f'atoms_{site}' in titration_dictionary.keys() != f'num_{site}' in titration_dictionary.keys():
+    if not (f'mollen_{site}' in titration_dictionary.keys() and f'num_{site}' in titration_dictionary.keys()):
         raise Exception("You must provide either both number of molecules and number of atoms in molecules or neither and declare each individually.")
 
 #Calculate required initial lambda and number of buffer particles to ensure the box remains at constant charge CpHMD
@@ -200,22 +200,38 @@ os.system('packmol < in.inp')
 #Write initial topology
 with open("topol.top","w") as topologyfile:
     index = 1
-    topologyfile.write(f'\#include "../charmm36-mar2019-cphmd.ff/forcefield.itp"\n')
+    topologyfile.write(f'#include "../charmm36-mar2019-cphmd.ff/forcefield.itp"\n#include "../charmm36-mar2019-cphmd.ff/ions.itp"\n#include "../charmm36-mar2019-cphmd.ff/tip3p.itp"\n')
     for site in range(1,titration_num+1):
-        shutil.copy(titration_dictionary[f'itp_{site}'], f"../charmm36-mar2019-cphmd.ff")
-        topologyfile.write(f'\#include "../charmm36-mar2019-cphmd.ff/{titration_dictionary[f"itp_{site}"]}"\n')
+        shutil.copy2(titration_dictionary[f'itp_{site}'], f"../charmm36-mar2019-cphmd.ff")
+        topologyfile.write(f'#include "../charmm36-mar2019-cphmd.ff/{titration_dictionary[f"itp_{site}"]}"\n')
     topologyfile.write(f'\n\n[ system ]\nSUF\n\n[ molecules ]\n')
     for site in range(1,titration_num+1):
         topologyfile.write(f'{titration_dictionary[f"name_{site}"]}               {titration_dictionary[f"num_{site}"]}\n')
-    
+
+########### Edit structure to be ready for equilibration ###########
+
+#Enlargen box
+os.system("gmx_mpi editconf -f out.pdb -o lrg.gro -c -d 2.0 -bt cubic")
+
+#Add water
+os.system("gmx_mpi solvate -cp lrg.gro -cs spc216.gro -o wet.gro -p topol.top")
+
+#Insert buffer particles
+os.system("gmx_mpi grompp -f buf.mdp -c wet.gro -o buf.tpr -p topol.top")
+os.system(f"echo SOL |gmx_mpi genion -s buf.tpr -o buf.gro -pname BUF -np {num_buf} -p topol.top")
+
+#Insert ions
+os.system("gmx_mpi grompp -f buf.mdp -c buf.gro -o ion.tpr -p topol.top")
+os.system(f"echo SOL |gmx_mpi genion -s ion.tpr -o ion.gro -pname NA -np {num_ions} -nname CL -nn {num_ions} -p topol.top")
+
 ########### Generate index.ndx ###########
 
 #Generate initial index.ndx using GROMACS
 
-os.system("echo q | gmx_mpi make_ndx -f npt.gro")
+os.system("echo q | gmx_mpi make_ndx -f ion.gro")
 
 #Generate parameter strings for index.ndx file
-index = 1
+index = 0
 
 for site in range(1,titration_num+1):
     try:
@@ -223,7 +239,7 @@ for site in range(1,titration_num+1):
             index += 1
             index_dictionary[f'{index}'] = index_group(
                         titration_dictionary[f"indexgrp_{site}"] + "_" + str(molecule),
-                        titration_dictionary[f'atoms_{titration_num}'] + titration_dictionary[f'mollen_{titration_num}'] * (molecule - 1)
+                        titration_dictionary[f'atoms_{site}'] + titration_dictionary[f'mollen_{site}'] * (molecule - 1)
                         )
             
     except:
@@ -233,9 +249,23 @@ for site in range(1,titration_num+1):
                     titration_dictionary[f'atoms_{titration_num}']
                     )
 
+print(index_dictionary)
+
+#Append index strings to index
 with open("index.ndx","a") as indexfile:
     for i in range(1, index+1):
         indexfile.write(index_dictionary[f'{i}'])
+
+########### Equilibrate structure ###########
+
+os.system("gmx_mpi grompp -f min.mdp -c ion.gro -o min.tpr -maxwarn 2")
+os.system("gmx_mpi mdrun -deffnm min -npme 0")
+
+os.system("gmx_mpi grompp -f nvt.mdp -c min.gro -r min.gro -o nvt.tpr -maxwarn 2")
+os.system("gmx_mpi mdrun -deffnm nvt -npme 0")
+
+os.system("gmx_mpi grompp -f npt.mdp -c nvt.gro -r nvt.gro -t nvt.cpt -o npt.tpr -maxwarn 2")
+os.system("gmx_mpi mdrun -deffnm npt -npme 0")
 
 ########### Edit md.mdp ###########
 
