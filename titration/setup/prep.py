@@ -1,5 +1,24 @@
 import numpy as np
+import os
 import re
+import shutil
+
+def index_group(name: str, atoms: list) -> str:
+    '''
+    Generate index group string for index.ndx for each titration group
+
+    Inputs:
+    name (str): Name for lambda group in index.ndx
+    atoms (list): Atoms numbers in topology
+
+    Outputs:
+    index_str (str): Formatted string for appending to index.ndx file
+    '''
+    title_str = f'\n[ {name} ]'
+    atom_str = f'{str(atoms[0])[1:-1].replace(",","")}\n\n'
+
+    index_str = '\n'.join(title_str, atom_str)
+    return index_str
 
 def lambda_group(lambda_name: str, group_name: str, atom_charges: list[list[float]], pka: float, dvdl_coeffs: list[float], init_lam: float, index: int) -> str:
     '''
@@ -78,6 +97,7 @@ def buf_group(n_buf: int, atom_charges: list[list[float]], dvdl_coeffs: list[flo
 #Reads input from input file ("input.in"). Requires each section, both number of particles
 
 titration_dictionary = {}
+index_dictionary = {}
 param_dictionary = {}
 
 main_sec = False
@@ -97,23 +117,29 @@ with open("input.in", "r") as input_file:
         #Add parameters for a titration group to the dictionary
         elif main_sec == False and buf_sec == False:
             if re.match('^Name', line, re.IGNORECASE):
-                titration_dictionary[f'name_{titration_num}'] = re.split('=|#', line)[1]
+                titration_dictionary[f'name_{titration_num}'] = re.split('=|#', line)[1].strip()
             elif re.match('^State 0', line, re.IGNORECASE):
                 titration_dictionary[f'state0_{titration_num}'] = np.array(re.split(' ', re.split('=|#', line)[1][1:]), dtype = float)
             elif re.match('^State 1', line, re.IGNORECASE):
                 titration_dictionary[f'state1_{titration_num}'] = np.array(re.split(' ', re.split('=|#', line)[1][1:]), dtype = float)
             elif re.match('^pka', line, re.IGNORECASE):
-                titration_dictionary[f'pka_{titration_num}'] = re.split('=|#', line)[1]
+                titration_dictionary[f'pka_{titration_num}'] = re.split('=|#', line)[1].strip()
             elif re.match('^correction', line, re.IGNORECASE):
-                titration_dictionary[f'correction_{titration_num}'] = re.split('=|#', line)[1]
+                titration_dictionary[f'correction_{titration_num}'] = re.split('=|#', line)[1].strip()
             elif re.match('^Index', line, re.IGNORECASE):
-                titration_dictionary[f'indexgrp_{titration_num}'] = re.split('=|#', line)[1]
+                titration_dictionary[f'indexgrp_{titration_num}'] = re.split('=|#', line)[1].strip()
             elif re.match('^Initial lambda', line, re.IGNORECASE):
                 titration_dictionary[f'initlam_{titration_num}'] = float(re.split('=|#', line)[1])
-            elif re.match('^Initial lambda', line, re.IGNORECASE):
+            elif re.match('^Atom indicies', line, re.IGNORECASE):
                 titration_dictionary[f'atoms_{titration_num}'] = np.array(re.split(' ', re.split('=|#', line)[1][1:]), dtype = int)
             elif re.match('^Number', line, re.IGNORECASE):
                 titration_dictionary[f'num_{titration_num}'] = int(re.split('=|#', line)[1])
+            elif re.match('^Atoms in molecule', line, re.IGNORECASE):
+                titration_dictionary[f'mollen_{titration_num}'] = int(re.split('=|#', line)[1])
+            elif re.match('^Structure', line, re.IGNORECASE):
+                titration_dictionary[f'structure_{titration_num}'] = re.split('=|#', line)[1].strip()
+            elif re.match('^itpfile', line, re.IGNORECASE):
+                titration_dictionary[f'itp_{titration_num}'] = re.split('=|#', line)[1].strip()
             elif re.match('^END*', line):
                 titration_num += 1
 
@@ -138,12 +164,19 @@ with open("input.in", "r") as input_file:
                 buf_sec = False
 
 titration_num -=1
+
+#Check that both or neither number of atoms in molecule and number of molecules are provided.
+#Causes problems generating index.ndx downstream otherwise
+for site in range(1,titration_num +1):
+    if f'atoms_{site}' in titration_dictionary.keys() != f'num_{site}' in titration_dictionary.keys():
+        raise Exception("You must provide either both number of molecules and number of atoms in molecules or neither and declare each individually.")
+
 #Calculate required initial lambda and number of buffer particles to ensure the box remains at constant charge CpHMD
 #This is assumed to be neutral at lambda = 0 for all titration sites
 total_charge = 0
 num_buf = 0
 
-for site in range(1,titration_num +1):
+for site in range(1,titration_num+1):
     num_buf += buf_ratio * titration_dictionary[f'num_{site}']
     site_charge = (np.sum(titration_dictionary[f'state1_{site}']) - np.sum(titration_dictionary[f'state0_{site}'])) * titration_dictionary[f'initlam_{site}'] * titration_dictionary[f'num_{site}']
     total_charge += site_charge
@@ -152,9 +185,57 @@ charge_buf =  - total_charge / num_buf
 
 init_lam_buf = (charge_buf - state0_buf) / (state1_buf - state0_buf)
 
+########### Generate intial structure and topology ###########
+
+#Generate initial structure in a 20 A radius sphere using packmol
+with open("in.inp","w") as packmolfile:
+    packmolfile.write(f"tolerance 2.0\n output out.pdb\n filetype pdb\n\n")
+    for site in range(1,titration_num+1):
+        packmolfile.write(f'structure {titration_dictionary[f"structure_{site}"]}\n')
+        packmolfile.write(f'    number {titration_dictionary[f"num_{site}"]}\n')
+        packmolfile.write(f'	inside sphere 0 0 0 20\n')
+        packmolfile.write(f'end structure')
+os.system('packmol < in.inp')
+
+#Write initial topology
+with open("topol.top","w") as topologyfile:
+    index = 1
+    topologyfile.write(f'\#include "../charmm36-mar2019-cphmd.ff/forcefield.itp"\n')
+    for site in range(1,titration_num+1):
+        shutil.copy(titration_dictionary[f'itp_{site}'], f"../charmm36-mar2019-cphmd.ff")
+        topologyfile.write(f'\#include "../charmm36-mar2019-cphmd.ff/{titration_dictionary[f"itp_{site}"]}"\n')
+    topologyfile.write(f'\n\n[ system ]\nSUF\n\n[ molecules ]\n')
+    for site in range(1,titration_num+1):
+        topologyfile.write(f'{titration_dictionary[f"name_{site}"]}               {titration_dictionary[f"num_{site}"]}\n')
+    
 ########### Generate index.ndx ###########
 
+#Generate initial index.ndx using GROMACS
 
+os.system("echo q | gmx_mpi make_ndx -f npt.gro")
+
+#Generate parameter strings for index.ndx file
+index = 1
+
+for site in range(1,titration_num+1):
+    try:
+        for molecule in range(1,titration_dictionary[f"num_{site}"]+1):
+            index += 1
+            index_dictionary[f'{index}'] = index_group(
+                        titration_dictionary[f"indexgrp_{site}"] + "_" + str(molecule),
+                        titration_dictionary[f'atoms_{titration_num}'] + titration_dictionary[f'mollen_{titration_num}'] * (molecule - 1)
+                        )
+            
+    except:
+        index += 1
+        index_dictionary[f'{index}'] = index_group(
+                    titration_dictionary[f"indexgrp_{site}"],
+                    titration_dictionary[f'atoms_{titration_num}']
+                    )
+
+with open("index.ndx","a") as indexfile:
+    for i in range(1, index+1):
+        indexfile.write(index_dictionary[f'{i}'])
 
 ########### Edit md.mdp ###########
 
@@ -162,30 +243,30 @@ init_lam_buf = (charge_buf - state0_buf) / (state1_buf - state0_buf)
 index = 1
 param_dictionary[f'{index}'] = buf_group(num_buf, [state0_buf, state1_buf], correction_buf, init_lam_buf)
 
-for titration_site in range(1,titration_num+1):
+for site in range(1,titration_num+1):
     try:
-        for molecule in range(1,titration_dictionary[f"num_{titration_site}"]+1):
+        for molecule in range(1,titration_dictionary[f"num_{site}"]+1):
             index += 1
             molecule = str(molecule)
             param_dictionary[f'{index}'] = lambda_group(
-                        titration_dictionary[f"name_{titration_site}"] + "_" + molecule,
-                        titration_dictionary[f"indexgrp_{titration_site}"] + "_" + molecule,
-                        [titration_dictionary[f"state0_{titration_site}"],titration_dictionary[f"state1_{titration_site}"]],
-                        titration_dictionary[f"pka_{titration_site}"],
-                        titration_dictionary[f"correction_{titration_site}"],
-                        titration_dictionary[f'initlam_{titration_site}'],
+                        titration_dictionary[f"name_{site}"] + "_" + molecule,
+                        titration_dictionary[f"indexgrp_{site}"] + "_" + molecule,
+                        [titration_dictionary[f"state0_{site}"],titration_dictionary[f"state1_{site}"]],
+                        titration_dictionary[f"pka_{site}"],
+                        titration_dictionary[f"correction_{site}"],
+                        titration_dictionary[f'initlam_{site}'],
                         index
                         )
             
     except:
         index += 1
         param_dictionary[f'{index}'] = lambda_group(
-                titration_dictionary[f"name_{titration_site}"],
-                titration_dictionary[f"indexgrp_{titration_site}"],
-                [titration_dictionary[f"state0_{titration_site}"],titration_dictionary[f"state1_{titration_site}"]],
-                titration_dictionary[f"pka_{titration_site}"],
-                titration_dictionary[f"correction_{titration_site}"],
-                titration_dictionary[f'initlam_{titration_site}'],
+                titration_dictionary[f"name_{site}"],
+                titration_dictionary[f"indexgrp_{site}"],
+                [titration_dictionary[f"state0_{site}"],titration_dictionary[f"state1_{site}"]],
+                titration_dictionary[f"pka_{site}"],
+                titration_dictionary[f"correction_{site}"],
+                titration_dictionary[f'initlam_{site}'],
                 index
                 )
 

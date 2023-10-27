@@ -111,22 +111,5 @@ lambda-dynamics-simulation-ph                          = PH_VAR         ;pH of s
 lambda-dynamics-lambda-particle-mass                   = 5.0            ;mass of fictious lambda particle
 lambda-dynamics-update-nst                             = 100            ;frequency for writing lambda values to output
 lambda-dynamics-tau                                    = 1              ;time constant for temperature coupling of lambda particles only (ps)
-lambda-dynamics-number-lambda-group-types              = GRP_VAR        ;number of lambda groups including buffer particles
-lambda-dynamics-number-atom-collections                = GRP_VAR        ;number of titration groups in the system
 lambda-dynamics-multistate-constraints                 = no             ;enable multistate representation, must have a common non-physical state for multistates
 lambda-dynamics-charge-constraints                     = yes            ;couples charges inside charge restraint groups, must have a buffer group in each restraint group, must be no if calibration = yes
-
-lambda-dynamics-group-type1-name                          = BUF         ;name of titration group
-lambda-dynamics-group-type1-n-states                      = 1           ;number of states excluding common states, 1 for simple protonation and deprotonation
-lambda-dynamics-group-type1-state-0-charges               = -0.50       ;charge of state 0, common state. Note must be in order of index group. For buffer particles, only required for one particle, later settings will account for multiplicity
-lambda-dynamics-group-type1-state-1-charges               = 0.50        ;charge of state 1, deprotonated state.
-lambda-dynamics-group-type1-state-1-dvdl-coefficients     = -2391.04 8581.51 -10755.2 4646.51 382.852 -103.978 -1254.42 575.647  ;calibration polynomial coefficents in kJmol-1. For buffer groups, this must be for a single particle.
-lambda-dynamics-group-type1-state-1-reference-pka         = PH_VAR      ;pKa of titration group. Should be set to the system pH for buffer groups
-
-lambda-dynamics-atom-set1-name                         = BUF            ;name of atom set, can be different from titration group and index group name
-lambda-dynamics-atom-set1-index-group-name             = BUF            ;name of index group from .ndx file
-lambda-dynamics-atom-set1-barrier		       = 0.0            ;Double well potential barrier height in kJmol-1
-lambda-dynamics-atom-set1-initial-lambda               = LAM_BUF_VAR    ;starting lambda value for simulation. Note for calibration = yes, this value will be the value of lambda for the entire run.
-lambda-dynamics-atom-set1-buffer-residue               = yes            ;Declare buffer residue (or not)
-lambda-dynamics-atom-set1-buffer-residue-multiplier    = BUF_NUM_VAR              ;Number of buffer particles in buffer particle group. For buffer-residue = yes only.
-lambda-dynamics-atom-set1-charge-restraint-group-index = 1             ;Groups titration groups to conserve charge. Note will conserve the charge of the group, i.e. if charged at start then will remain so. In addition requires charge-constraints = yes

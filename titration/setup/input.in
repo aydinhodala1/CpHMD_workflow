@@ -15,5 +15,8 @@ Correction     = -226.21773756   952.8559738  -1529.0831676    967.60375464  -25
 Index group    = lam1
 Initial lambda = 0.5
 Number         = 20
-Atoms          = 1 2 3 4 21
+Atoms indicies    = 1 2 3 4 21
+Atoms in molecule = 54
+Structure      = ola.pdb
+itpfile        = ola.itp
 END
