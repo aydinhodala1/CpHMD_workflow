@@ -64,23 +64,23 @@ do
 done
 
 #Add required CpHMD parameters to md.mdp for production run
-sed s/GRP_VAR/$(($num_ola+1))/g md.mdp > run.mdp
-sed -i s/BUF_NUM_VAR/$((10*$num_ola))/g run.mdp
-rep=2
-while [ $rep -le $(($num_ola+1)) ]
-do
-        sed -i '$a\ ' run.mdp
-        sed -i '$a\lambda-dynamics-group-type'"$rep"'-name                          = OLA'"$(($rep-1))"'' run.mdp
-        sed -i '$a\lambda-dynamics-group-type'"$rep"'-n-states                      = 1' run.mdp
-        sed -i '$a\lambda-dynamics-group-type'"$rep"'-state-0-charges               =  0.75 -0.21 -0.55 -0.61 0.44' run.mdp
-        sed -i '$a\lambda-dynamics-group-type'"$rep"'-state-1-charges               =  0.62 -0.28 -0.76 -0.76 0.00' run.mdp
-        sed -i '$a\lambda-dynamics-group-type'"$rep"'-state-1-reference-pka         = 4.75' run.mdp
-        sed -i '$a\lambda-dynamics-group-type'"$rep"'-state-1-dvdl-coefficients     =  -226.21773756   952.8559738  -1529.0831676    967.60375464  -251.28863742  -571.62201758    87.69457099' run.mdp
-        sed -i '$a\ ' run.mdp
-        sed -i '$a\lambda-dynamics-atom-set'"$rep"'-name                         = OLA'"$(($rep-1))"'' run.mdp
-        sed -i '$a\lambda-dynamics-atom-set'"$rep"'-index-group-name             = lam'"$(($rep-1))"'' run.mdp
-        sed -i '$a\lambda-dynamics-atom-set'"$rep"'-barrier                      = 5.0' run.mdp
-        sed -i '$a\lambda-dynamics-atom-set'"$rep"'-initial-lambda               = LAM_OLA_VAR' run.mdp
-        sed -i '$a\lambda-dynamics-atom-set'"$rep"'-charge-restraint-group-index = 1' run.mdp        
-        rep=$(($rep+1))
-done
+# sed s/GRP_VAR/$(($num_ola+1))/g md.mdp > run.mdp
+# sed -i s/BUF_NUM_VAR/$((10*$num_ola))/g run.mdp
+# rep=2
+# while [ $rep -le $(($num_ola+1)) ]
+# do
+#         sed -i '$a\ ' run.mdp
+#         sed -i '$a\lambda-dynamics-group-type'"$rep"'-name                          = OLA'"$(($rep-1))"'' run.mdp
+#         sed -i '$a\lambda-dynamics-group-type'"$rep"'-n-states                      = 1' run.mdp
+#         sed -i '$a\lambda-dynamics-group-type'"$rep"'-state-0-charges               =  0.75 -0.21 -0.55 -0.61 0.44' run.mdp
+#         sed -i '$a\lambda-dynamics-group-type'"$rep"'-state-1-charges               =  0.62 -0.28 -0.76 -0.76 0.00' run.mdp
+#         sed -i '$a\lambda-dynamics-group-type'"$rep"'-state-1-reference-pka         = 4.75' run.mdp
+#         sed -i '$a\lambda-dynamics-group-type'"$rep"'-state-1-dvdl-coefficients     =  -226.21773756   952.8559738  -1529.0831676    967.60375464  -251.28863742  -571.62201758    87.69457099' run.mdp
+#         sed -i '$a\ ' run.mdp
+#         sed -i '$a\lambda-dynamics-atom-set'"$rep"'-name                         = OLA'"$(($rep-1))"'' run.mdp
+#         sed -i '$a\lambda-dynamics-atom-set'"$rep"'-index-group-name             = lam'"$(($rep-1))"'' run.mdp
+#         sed -i '$a\lambda-dynamics-atom-set'"$rep"'-barrier                      = 5.0' run.mdp
+#         sed -i '$a\lambda-dynamics-atom-set'"$rep"'-initial-lambda               = LAM_OLA_VAR' run.mdp
+#         sed -i '$a\lambda-dynamics-atom-set'"$rep"'-charge-restraint-group-index = 1' run.mdp        
+#         rep=$(($rep+1))
+# done
