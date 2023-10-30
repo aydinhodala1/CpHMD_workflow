@@ -2,6 +2,7 @@
 
 MAIN
 Buffer/surfactant     = 10
+Repeats            = 3
 END
 
 BUF
@@ -16,10 +17,10 @@ State 1        = 0.62 -0.28 -0.76 -0.76 0.00
 pka            = 4.75
 Correction     = -226.21773756   952.8559738  -1529.0831676    967.60375464  -251.28863742  -571.62201758    87.69457099
 Index group    = lam1
-Initial lambda = 0.5
-Number         = 20
+Initial lambda = 0.0
+#Number         = 20
 Atom indicies    = 1 2 3 4 21
-Atoms in molecule = 54
+#Atoms in molecule = 54
 Structure      = ola.pdb
 itpfile        = ola.itp
 END

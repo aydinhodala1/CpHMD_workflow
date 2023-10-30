@@ -110,7 +110,7 @@ buf_sec = False
 titration_num = 1
 num_ions = 0
 
-with open("../input.in", "r") as input_file:
+with open("../../input.in", "r") as input_file:
     for line in input_file:
         line = line[:-1] 
         #Check if at the beginning of any sections
@@ -142,7 +142,7 @@ with open("../input.in", "r") as input_file:
             elif re.match('^Atoms in molecule', line, re.IGNORECASE):
                 titration_dictionary[f'mollen_{titration_num}'] = int(re.split('=|#', line)[1])
             elif re.match('^Structure', line, re.IGNORECASE):
-                titration_dictionary[f'structure_{titration_num}'] = "../"+re.split('=|#', line)[1].strip()
+                titration_dictionary[f'structure_{titration_num}'] = "../../"+re.split('=|#', line)[1].strip()
             elif re.match('^itpfile', line, re.IGNORECASE):
                 titration_dictionary[f'itp_{titration_num}'] = re.split('=|#', line)[1].strip()
             elif re.match('^END*', line):
@@ -173,8 +173,10 @@ titration_num -=1
 #Check that both or neither number of atoms in molecule and number of molecules are provided.
 #Causes problems generating index.ndx downstream otherwise
 for site in range(1,titration_num +1):
-    if not (f'mollen_{site}' in titration_dictionary.keys() and f'num_{site}' in titration_dictionary.keys()):
+    if ((f'mollen_{site}' in titration_dictionary.keys()) ^ (f'num_{site}' in titration_dictionary.keys())):
         raise Exception("You must provide either both number of molecules and number of atoms in molecules or neither and declare each individually.")
+    elif not (f'num_{site}' in titration_dictionary.keys()):
+        titration_dictionary[f'num_{site}'] = 1
 
 #Calculate required initial lambda and number of buffer particles to ensure the box remains at constant charge CpHMD
 #This is assumed to be neutral at lambda = 0 for all titration sites
@@ -205,10 +207,10 @@ os.system('packmol < in.inp')
 #Write initial topology
 with open("topol.top","w") as topologyfile:
     index = 1
-    topologyfile.write(f'#include "../charmm36-mar2019-cphmd.ff/forcefield.itp"\n#include "../charmm36-mar2019-cphmd.ff/ions.itp"\n#include "../charmm36-mar2019-cphmd.ff/tip3p.itp"\n')
+    topologyfile.write(f'#include "../../charmm36-mar2019-cphmd.ff/forcefield.itp"\n#include "../../charmm36-mar2019-cphmd.ff/ions.itp"\n#include "../../charmm36-mar2019-cphmd.ff/tip3p.itp"\n')
     for site in range(1,titration_num+1):
-        shutil.copy2(f"../{titration_dictionary[f'itp_{site}']}", f"../charmm36-mar2019-cphmd.ff")
-        topologyfile.write(f'#include "../charmm36-mar2019-cphmd.ff/{titration_dictionary[f"itp_{site}"]}"\n')
+        shutil.copy2(f"../../{titration_dictionary[f'itp_{site}']}", f"../../charmm36-mar2019-cphmd.ff")
+        topologyfile.write(f'#include "../../charmm36-mar2019-cphmd.ff/{titration_dictionary[f"itp_{site}"]}"\n')
     topologyfile.write(f'\n\n[ system ]\nSUF\n\n[ molecules ]\n')
     for site in range(1,titration_num+1):
         topologyfile.write(f'{titration_dictionary[f"name_{site}"]}               {titration_dictionary[f"num_{site}"]}\n')
@@ -248,7 +250,6 @@ for site in range(1,titration_num+1):
                         )
             
     except:
-        index += 1
         index_dictionary[f'{index}'] = index_group(
                     titration_dictionary[f"indexgrp_{site}"],
                     titration_dictionary[f'atoms_{titration_num}']
@@ -283,7 +284,9 @@ for site in range(1,titration_num+1):
     try:
         for molecule in range(1,titration_dictionary[f"num_{site}"]+1):
             index += 1
+            #Check for both length and number provided
             molecule = str(molecule)
+            length = str(titration_dictionary[f'mollen_{site}'])
             param_dictionary[f'{index}'] = lambda_group(
                         titration_dictionary[f"name_{site}"] + "_" + molecule,
                         titration_dictionary[f"indexgrp_{site}"] + "_" + molecule,
@@ -295,7 +298,6 @@ for site in range(1,titration_num+1):
                         )
             
     except:
-        index += 1
         param_dictionary[f'{index}'] = lambda_group(
                 titration_dictionary[f"name_{site}"],
                 titration_dictionary[f"indexgrp_{site}"],
@@ -315,10 +317,11 @@ with open("md.mdp","a") as mdfile:
 
 ########### Prepare initial files for production ###########
 
-#Create production directory
+#Create production directory and add analysis script
 if os.path.exists("../production"):
     shutil.rmtree("../production")
-shutil.copytree("../charmm36-mar2019-cphmd.ff", "../production/charmm36-mar2019-cphmd.ff")
+os.mkdir("../production")
+shutil.copy2("titration.py", "../production")
 
 #Generate pH directories and populate with input files
 pH_range = np.linspace(0,14,29)
@@ -328,8 +331,17 @@ for pH in pH_range:
     os.mkdir(dirname)
     shutil.copy2("npt.gro", dirname)
     shutil.copy2("index.ndx", dirname)
-    shutil.copy2("topol.top", dirname)
     shutil.copy2("production.py", dirname)
+
+    #Point to correct force field directory
+    shutil.copy2("topol.top", dirname)
+    with open(f"{dirname}/topol.top","r") as topolfile:
+        topol = topolfile.read()
+        topol = topol.replace("../..", "../../..")
+    with open(f"{dirname}/topol.top","w") as topolfile:
+        topolfile.write(topol)
+
+    #Add pH parameter to md.mdp
     shutil.copy2("md.mdp", dirname)
     with open(f"{dirname}/md.mdp","a") as mdfile:
         mdfile.write(f'\nlambda-dynamics-simulation-ph                          = {pH}\n')
