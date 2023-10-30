@@ -144,7 +144,7 @@ with open("../input.in", "r") as input_file:
             elif re.match('^Structure', line, re.IGNORECASE):
                 titration_dictionary[f'structure_{titration_num}'] = "../"+re.split('=|#', line)[1].strip()
             elif re.match('^itpfile', line, re.IGNORECASE):
-                titration_dictionary[f'itp_{titration_num}'] = "../"+re.split('=|#', line)[1].strip()
+                titration_dictionary[f'itp_{titration_num}'] = re.split('=|#', line)[1].strip()
             elif re.match('^END*', line):
                 titration_num += 1
 
@@ -207,7 +207,7 @@ with open("topol.top","w") as topologyfile:
     index = 1
     topologyfile.write(f'#include "../charmm36-mar2019-cphmd.ff/forcefield.itp"\n#include "../charmm36-mar2019-cphmd.ff/ions.itp"\n#include "../charmm36-mar2019-cphmd.ff/tip3p.itp"\n')
     for site in range(1,titration_num+1):
-        shutil.copy2(titration_dictionary[f'itp_{site}'], f"../charmm36-mar2019-cphmd.ff")
+        shutil.copy2(f"../{titration_dictionary[f'itp_{site}']}", f"../charmm36-mar2019-cphmd.ff")
         topologyfile.write(f'#include "../charmm36-mar2019-cphmd.ff/{titration_dictionary[f"itp_{site}"]}"\n')
     topologyfile.write(f'\n\n[ system ]\nSUF\n\n[ molecules ]\n')
     for site in range(1,titration_num+1):
@@ -261,14 +261,17 @@ with open("index.ndx","a") as indexfile:
 
 ########### Equilibrate structure ###########
 
+omp_slots = os.environ["OMP_NUM_THREADS"]
+mpi_ranks = os.environ["NSLOTS"]
+
 os.system("gmx_mpi grompp -f min.mdp -c ion.gro -o min.tpr -maxwarn 2")
-os.system("gmx_mpi mdrun -deffnm min -npme 0")
+os.system("mpirun -n $NSLOTS gmx_mpi mdrun -deffnm min -npme 0")
 
 os.system("gmx_mpi grompp -f nvt.mdp -c min.gro -r min.gro -o nvt.tpr -maxwarn 2")
-os.system("gmx_mpi mdrun -deffnm nvt -npme 0")
+os.system("mpirun -n $NSLOTS gmx_mpi mdrun -deffnm nvt -npme 0")
 
 os.system("gmx_mpi grompp -f npt.mdp -c nvt.gro -r nvt.gro -t nvt.cpt -o npt.tpr -maxwarn 2")
-os.system("gmx_mpi mdrun -deffnm npt -npme 0")
+os.system("mpirun -n $NSLOTS gmx_mpi mdrun -deffnm npt -npme 0")
 
 ########### Edit md.mdp ###########
 
@@ -312,9 +315,12 @@ with open("md.mdp","a") as mdfile:
 
 ########### Prepare initial files for production ###########
 
-os.mkdir("../production")
-shutil.copy2("../charmm36-mar2019-cphmd.ff", "../production")
+#Create production directory
+if os.path.exists("../production"):
+    shutil.rmtree("../production")
+shutil.copytree("../charmm36-mar2019-cphmd.ff", "../production/charmm36-mar2019-cphmd.ff")
 
+#Generate pH directories and populate with input files
 pH_range = np.linspace(0,14,29)
 
 for pH in pH_range:
@@ -323,6 +329,7 @@ for pH in pH_range:
     shutil.copy2("npt.gro", dirname)
     shutil.copy2("index.ndx", dirname)
     shutil.copy2("topol.top", dirname)
-    with open("md.mdp","a") as mdfile:
-        mdfile.write(f'\nlambda-dynamics-simulation-ph                          = {pH}\n')
+    shutil.copy2("production.py", dirname)
     shutil.copy2("md.mdp", dirname)
+    with open(f"{dirname}/md.mdp","a") as mdfile:
+        mdfile.write(f'\nlambda-dynamics-simulation-ph                          = {pH}\n')

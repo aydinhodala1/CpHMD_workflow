@@ -10,11 +10,11 @@ import numpy as np
 #Find number of groups
 num_groups = 0
 
-with open("topol.top","r") as topolfile:
-    while num_groups == 0:
-        for line in topolfile:
-            if re.match("^lambda-dynamics-number-lambda-group-types", line):
-                num_groups = int(line.split("=")[1].strip())
+with open("md.mdp","r") as mdpfile:
+    for line in mdpfile:
+        if re.match("^lambda-dynamics-number-lambda-group-types", line):
+            num_groups = int(line.split("=")[1].strip())
+            break
 
 #Import bash environment variables
 omp_slots = os.environ["OMP_NUM_THREADS"]
@@ -29,15 +29,12 @@ os.system(f"gmx_mpi cphmd -s pro.tpr -e pro.edr -numplot {num_groups}")
 
 ########### Raw data analysis ###########
 
-eq_time = 5_000
 data_dictionary = {}
 
-time,buff,*acids = np.loadtxt("pro.edr", comments=["#","@"], unpack=True)
+time,buff,*acids = np.loadtxt(f"cphmd-coord-1-{num_groups}.xvg", comments=["#","@"], unpack=True)
 
-rounded = []
-eq_steps = np.where(time == eq_time)[0][0]
 for acid in acids:
     plt.plot(time,acid)
 plt.xlabel("Time /ps")
 plt.ylabel("$\\lambda$")
-plt.savefig(f"lambdas.png")
+plt.savefig(f"lambda_pop.png")

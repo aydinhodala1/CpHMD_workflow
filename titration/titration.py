@@ -2,10 +2,11 @@ import numpy as np
 import glob
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
-plt.style.use('colourfigs')
 
 def hill(pHs, n, pka):
 	return 1 / (10 **(n* (pka - pHs))+1)
+
+ideal_pka = 4.75
 
 paths = glob.glob("*/*-coord-*")
 average_lam = []
@@ -32,7 +33,8 @@ print(popt)
 xs = np.linspace(min(pH),max(pH),5000)
 
 plt.plot(pH, average_lam, '.',label = "Simulation data",zorder= 3)
-plt.plot(xs, hill(xs,1,4.75), label = "Ideal curve", zorder = 1)
+plt.plot(xs, hill(xs,1,ideal_pka), label = "Ideal curve", zorder = 1)
 plt.plot(xs, hill(xs, popt[0], popt[1]), label = "Fitted curve", zorder = 2)
 plt.legend()
+plt.savefig("titration_curve.pdf")
 plt.savefig("titration_curve.png")
