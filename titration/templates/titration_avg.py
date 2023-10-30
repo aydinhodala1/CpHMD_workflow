@@ -7,7 +7,7 @@ plt.style.use('colourfigs')
 def hill(pHs, n, pka):
 	return 1 / (10 **(n* (pka - pHs))+1)
 
-paths = glob.glob("*/avg_lam.txt")
+paths = glob.glob("../*/avg_lam.txt")
 average_lam = []
 pH = []
 
@@ -27,3 +27,4 @@ plt.plot(xs, hill(xs,1,4.75), label = "Ideal curve", zorder = 1)
 plt.plot(xs, hill(xs, popt[0], popt[1]), label = "Fitted curve", zorder = 2)
 plt.legend()
 plt.savefig("titration_curve.png")
+plt.savefig("titration_curve.pdf")
