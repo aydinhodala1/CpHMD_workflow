@@ -29,8 +29,6 @@ os.system(f"gmx_mpi cphmd -s pro.tpr -e pro.edr -numplot {num_groups}")
 
 ########### Raw data analysis ###########
 
-data_dictionary = {}
-
 time,buff,*acids = np.loadtxt(f"cphmd-coord-1-{num_groups}.xvg", comments=["#","@"], unpack=True)
 
 for acid in acids:

@@ -7,7 +7,7 @@ plt.style.use('colourfigs')
 def hill(pHs, n, pka):
 	return 1 / (10 **(n* (pka - pHs))+1)
 
-paths = glob.glob("../*/avg_lam.txt")
+paths = glob.glob("../*/avg_dvdl.dat")
 average_lam = []
 pH = []
 

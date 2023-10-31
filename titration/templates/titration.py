@@ -26,7 +26,7 @@ for path in paths:
     pH.append(float(path.partition('/')[0]))
     average_lam.append(np.mean(rounded))
 
-np.savetxt("avg_lam.txt", list(zip(pH, average_lam)), fmt = '%.4e')
+np.savetxt("avg_lam.dat", list(zip(pH, average_lam)), fmt = '%.4e')
 
 popt, pcov = curve_fit(hill, pH, average_lam)
 

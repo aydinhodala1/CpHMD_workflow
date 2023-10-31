@@ -262,17 +262,29 @@ with open("index.ndx","a") as indexfile:
 
 ########### Equilibrate structure ###########
 
-omp_slots = os.environ["OMP_NUM_THREADS"]
-mpi_ranks = os.environ["NSLOTS"]
+#MPI ranks and OpenMP threads. Defaults to serial if not provided as environment variables
+try:
+    omp_slots = os.environ["OMP_NUM_THREADS"]
+except:
+    omp_slots = 1
 
+try:
+    mpi_ranks = os.environ["NSLOTS"]
+except:
+    mpi_ranks = 1
+
+
+#Energy minimization
 os.system("gmx_mpi grompp -f min.mdp -c ion.gro -o min.tpr -maxwarn 2")
-os.system("mpirun -n $NSLOTS gmx_mpi mdrun -deffnm min -npme 0")
+os.system(f"mpirun -n {mpi_ranks} gmx_mpi mdrun -deffnm min -npme 0")
 
+#NVT equilibration
 os.system("gmx_mpi grompp -f nvt.mdp -c min.gro -r min.gro -o nvt.tpr -maxwarn 2")
-os.system("mpirun -n $NSLOTS gmx_mpi mdrun -deffnm nvt -npme 0")
+os.system(f"mpirun -n {mpi_ranks} gmx_mpi mdrun -deffnm nvt -npme 0")
 
+#NPT equilibration
 os.system("gmx_mpi grompp -f npt.mdp -c nvt.gro -r nvt.gro -t nvt.cpt -o npt.tpr -maxwarn 2")
-os.system("mpirun -n $NSLOTS gmx_mpi mdrun -deffnm npt -npme 0")
+os.system(f"mpirun -n {mpi_ranks} gmx_mpi mdrun -deffnm npt -npme 0")
 
 ########### Edit md.mdp ###########
 

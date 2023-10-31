@@ -25,16 +25,6 @@ os.system("gmx_mpi grompp -f md.mdp -c npt.gro -p topol.top -o pro.tpr -n index.
 os.system(f"mpirun -n {mpi_ranks} gmx_mpi mdrun -deffnm pro -npme 0")
 
 #Extract CpHMD data
-os.system(f"gmx_mpi cphmd -s pro.tpr -e pro.edr -numplot {num_groups}")
+os.system(f"gmx_mpi cphmd -s pro.tpr -e pro.edr -coordinate no -dvdl yes")
 
 ########### Raw data analysis ###########
-
-data_dictionary = {}
-
-time,buff,*acids = np.loadtxt(f"cphmd-coord-1-{num_groups}.xvg", comments=["#","@"], unpack=True)
-
-for acid in acids:
-    plt.plot(time,acid)
-plt.xlabel("Time /ps")
-plt.ylabel("$\\lambda$")
-plt.savefig(f"lambda_pop.png")
