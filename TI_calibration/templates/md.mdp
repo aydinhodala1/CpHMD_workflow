@@ -1,22 +1,14 @@
-
-; Preprosessing
-
 ; Run control 
 
 integrator               = md                ; md, md-vv, steep, cg ...
 tinit                    = 0                 ; starting time for run (0)
 dt                       = 0.001             ; timestep [ps] (0.001)
-nsteps                   = 10000000          ; number of steps (0)
+nsteps                   = 1000          ; number of steps (0)
 init-step                = 0                 ; starting step (0)
 simulation-part          = 0                 ; if simulation consists of multiple parts (0)
 comm-mode                = Linear            ; mode for center of mass motion removal
 nstcomm                  = 1000              ; number of steps for center of mass motion  removal (100)
 comm-grps                =                   ; group(s) for center of mass motion removal (all)
-
-; Langevin dynamics
-
-bd-fric                  = 0                 ; brownian dynamics friction coefficient in [amu/ps] (0)
-ld-seed                  = -1                ; random seed (-1, pseudo random seed)
 
 ; Energy minimization options 
 
@@ -37,8 +29,6 @@ nstcalcenergy            = 1000                ; frequency for calculating energ
 nstenergy                = 10000               ; output frequency for energies to energy file (1000)
 nstxout-compressed       = 50000                 ; output frequency for writing x using lossy compression (0)
 compressed-x-precision   = 1000              ; precision with which to write to compressed trajectory (1000)
-compressed-x-grps        =                   ; groups to write to compressed trajectory 
-energygrps               =         ; selection of energy groups
 
 ; Neighbor searching parameters
 cutoff-scheme            = Verlet            ; verlet or group
@@ -66,7 +56,6 @@ rvdw-switch              = 1.0               ; CHARMM where to start switching L
 rvdw                     = 1.2               ; CHARMM distance for LJ cut-off [nm] (1)
 DispCorr                 = no                ; CHARMM apply long range dispersion corrections for energy, pressure
 table-extension          = 1.0               ; extension of the potential lookup tables beyond the cut-off
-energygrp_table          =                   ; separate tables between energy group pairs
 
 ; Ewald Ewald, PME, PPPM parameters
 
@@ -104,40 +93,11 @@ gen-vel                  = yes               ; if changed, also change 'continua
 gen-temp                 = 300               ; temperature for Maxwell distribution [K] (300)
 gen-seed                 = -1                ; if set to (-1), pseudo random seed is used
 
-; Options for bonds   
- 
-;constraints              = h-bonds           ; none, h-bonds, all-bonds
-;constraint-algorithm     = lincs             ; type of constraint algorithm (lincs, shake)
-;continuation             = no                ; whether to constrain the start configuration
-;shake-tol                = 0.0001            ; relative tolerance of shake (0.0001)
-;lincs-order              = 4                 ; highest order in expansion of constraint coupling matrix (4) 
-;lincs-iter               = 1                 ; number of iterations in the final step of LINCS (1) 
-;lincs-warnangle          = 30                ; lincs warning if a bond rotates more [deg] (30)
-;morse                    = no                ; convert harmonic bonds to morse potentials
-
 ; CONSTANT PH
 lambda-dynamics                                        = yes            ;enables CpHMD
 lambda-dynamics-calibration                            = yes            ;used for TI runs in calibration runs, lambda kept constant
-lambda-dynamics-simulation-ph                          = PH_VAR         ;pH of simulation, ignored if calibration = yes
+lambda-dynamics-simulation-ph                          = 7
 lambda-dynamics-lambda-particle-mass                   = 5.0            ;mass of fictious lambda particle
 lambda-dynamics-update-nst                             = 100            ;frequency for writing lambda values to output
 lambda-dynamics-tau                                    = 1              ;time constant for temperature coupling of lambda particles only (ps)
-lambda-dynamics-number-lambda-group-types              = 2              ;number of lambda groups including buffer particles
-lambda-dynamics-number-atom-collections                = 2              ;number of titration groups in the system
 lambda-dynamics-multistate-constraints                 = no             ;enable multistate representation, must have a common non-physical state for multistates
-lambda-dynamics-charge-constraints                     = yes            ;couples charges inside charge restraint groups, must have a buffer group in each restraint group, must be no if calibration = yes
-
-lambda-dynamics-group-type1-name                          = BUF         ;name of titration group
-lambda-dynamics-group-type1-n-states                      = 1           ;number of states excluding common states, 1 for simple protonation and deprotonation
-lambda-dynamics-group-type1-state-0-charges               = -0.50       ;charge of state 0, common state. Note must be in order of index group. For buffer particles, only required for one particle, later settings will account for multiplicity
-lambda-dynamics-group-type1-state-1-charges               = 0.50        ;charge of state 1, deprotonated state.
-lambda-dynamics-group-type1-state-1-dvdl-coefficients     = -2391.04 8581.51 -10755.2 4646.51 382.852 -103.978 -1254.42 575.647  ;calibration polynomial coefficents in kJmol-1. For buffer groups, this must be for a single particle.
-lambda-dynamics-group-type1-state-1-reference-pka         = PH_VAR      ;pKa of titration group. Should be set to the system pH for buffer groups
-
-lambda-dynamics-atom-set1-name                         = BUF            ;name of atom set, can be different from titration group and index group name
-lambda-dynamics-atom-set1-index-group-name             = BUF            ;name of index group from .ndx file
-lambda-dynamics-atom-set1-barrier		       = 0.0            ;Double well potential barrier height in kJmol-1
-lambda-dynamics-atom-set1-initial-lambda               = LAM_BUF_VAR    ;starting lambda value for simulation. Note for calibration = yes, this value will be the value of lambda for the entire run.
-lambda-dynamics-atom-set1-buffer-residue               = yes            ;Declare buffer residue (or not)
-lambda-dynamics-atom-set1-buffer-residue-multiplier    = 1              ;Number of buffer particles in buffer particle group. For buffer-residue = yes only.
-lambda-dynamics-atom-set1-charge-restraint-group-index = 1             ;Groups titration groups to conserve charge. Note will conserve the charge of the group, i.e. if charged at start then will remain so. In addition requires charge-constraints = yes
