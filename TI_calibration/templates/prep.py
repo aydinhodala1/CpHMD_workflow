@@ -177,9 +177,9 @@ with open("index.ndx","a") as indexfile:
 
 #MPI ranks and OpenMP threads. Defaults to serial if not provided as environment variables
 try:
-    omp_slots = os.environ["OMP_NUM_THREADS"]
+    os.environ["OMP_NUM_THREADS"]
 except:
-    omp_slots = 1
+    os.system("export OMP_NUM_THREADS=1")
 
 try:
     mpi_ranks = os.environ["NSLOTS"]

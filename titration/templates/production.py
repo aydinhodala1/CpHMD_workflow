@@ -17,8 +17,15 @@ with open("md.mdp","r") as mdpfile:
             break
 
 #Import bash environment variables
-omp_slots = os.environ["OMP_NUM_THREADS"]
-mpi_ranks = os.environ["NSLOTS"]
+try:
+    os.environ["OMP_NUM_THREADS"]
+except:
+    os.system("export OMP_NUM_THREADS=1")
+
+try:
+    mpi_ranks = os.environ["NSLOTS"]
+except:
+    mpi_ranks = 1
 
 #Run simulation
 os.system("gmx_mpi grompp -f md.mdp -c npt.gro -p topol.top -o pro.tpr -n index.ndx -maxwarn 3")

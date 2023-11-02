@@ -25,7 +25,7 @@ def index_group(name: str, atoms: list) -> str:
     index_str = '\n'.join([title_str, atom_str])
     return index_str
 
-def lambda_group(lambda_name: str, group_name: str, atom_charges: list[list[float]]) -> str:
+def lambda_group(lambda_name: str, group_name: str, atom_charges: list[list[float]], dvdl_coeffs: list[float],) -> str:
     '''
     Create the md.mdp CpHMD string for a lambda group
 
@@ -46,20 +46,22 @@ def lambda_group(lambda_name: str, group_name: str, atom_charges: list[list[floa
     lam0_str = f'lambda-dynamics-group-type2-state-0-charges               = {str(atom_charges[0])[1:-1].replace(",","")}'
     lam1_str = f'lambda-dynamics-group-type2-state-1-charges               = {str(atom_charges[1])[1:-1].replace(",","")}'
     pka_str = f'lambda-dynamics-group-type2-state-1-reference-pka         = 7'
-    dvdl_str = f'lambda-dynamics-group-type2-state-1-dvdl-coefficients     =  0'
+    dvdl_str = f'lambda-dynamics-group-type2-state-1-dvdl-coefficients     =  {dvdl_coeffs}'
     atom_str = f'lambda-dynamics-atom-set2-name                         = {lambda_name}'
     group_str = f'lambda-dynamics-atom-set2-index-group-name             = {group_name}'
     barrier_str = f'lambda-dynamics-atom-set2-barrier                      = 5.0'
+    init_str = f'lambda-dynamics-atom-set2-initial-lambda               = 0.5'
+    charge_str = f'lambda-dynamics-atom-set2-charge-restraint-group-index = 1\n\n'
     
     #Join all lines together, with a gap between group-type settings and atom-set settings
     lambda_str = '\n'.join(
             [name_str, states_str, lam0_str, lam1_str, pka_str, dvdl_str, 
-                '',atom_str, group_str, barrier_str]
+                '',atom_str, group_str, barrier_str, init_str, charge_str]
             )
 
     return lambda_str
 
-def buf_group() -> str:
+def buf_group(n_buf: int, atom_charges: list[list[float]], dvdl_coeffs: list[float], init_lam: float) -> str:
     '''
     Create the md.mdp CpHMD string for a lambda group
 
@@ -75,20 +77,22 @@ def buf_group() -> str:
     #Create each line of lambda-dynamics settings
     name_str = f'lambda-dynamics-group-type1-name                          = BUF'
     states_str = f'lambda-dynamics-group-type1-n-states                      = 1'
-    lam0_str = f'lambda-dynamics-group-type1-state-0-charges               = 0'
-    lam1_str = f'lambda-dynamics-group-type1-state-1-charges               = 1'
+    lam0_str = f'lambda-dynamics-group-type1-state-0-charges               = {str(atom_charges[0])}'
+    lam1_str = f'lambda-dynamics-group-type1-state-1-charges               = {str(atom_charges[1])}'
     pka_str = f'lambda-dynamics-group-type1-state-1-reference-pka         = 7'
-    dvdl_str = f'lambda-dynamics-group-type1-state-1-dvdl-coefficients     =  0'
+    dvdl_str = f'lambda-dynamics-group-type1-state-1-dvdl-coefficients     =  {dvdl_coeffs}'
     atom_str = f'lambda-dynamics-atom-set1-name                         = BUF'
     group_str = f'lambda-dynamics-atom-set1-index-group-name             = BUF'
     barrier_str = f'lambda-dynamics-atom-set1-barrier                      = 0.0'
+    init_str = f'lambda-dynamics-atom-set1-initial-lambda               = {init_lam}'
     buf_str = f'lambda-dynamics-atom-set1-buffer-residue               = yes'
-    nbuf_str = f'lambda-dynamics-atom-set1-buffer-residue-multiplier    = 1'
+    nbuf_str = f'lambda-dynamics-atom-set1-buffer-residue-multiplier    = {n_buf}'
+    charge_str = f'lambda-dynamics-atom-set1-charge-restraint-group-index = 1\n\n'
 
     #Join all lines together, with a gap between group-type settings and atom-set settings
     lambda_str = '\n'.join(
             [name_str, states_str, lam0_str, lam1_str, pka_str, dvdl_str, '',
-                atom_str, group_str, barrier_str, buf_str, nbuf_str]
+                atom_str, group_str, barrier_str, init_str, buf_str, nbuf_str, charge_str]
             )
 
     return lambda_str
@@ -97,6 +101,7 @@ def buf_group() -> str:
 
 #Reads input from input file ("input.in"). Requires each section, both number of particles
 main_sec = False
+buf_sec = False
 
 with open("../../input.in", "r") as input_file:
     for line in input_file:
@@ -104,20 +109,19 @@ with open("../../input.in", "r") as input_file:
         #Check if at the beginning of any sections
         if re.match("^MAIN", line):
             main_sec = True
-
-        #Gather parameters from main section for number of CpHMD active molecules
-        elif main_sec:
-            if re.match('^END', line):
-                main_sec = False
+        elif re.match("^BUF", line):
+            buf_sec = True
 
         #Add parameters for a titration group to the dictionary
-        else:
+        elif not main_sec or not buf_sec:
             if re.match('^Name', line, re.IGNORECASE):
                 name = re.split('=|#', line)[1].strip()
             elif re.match('^State 0', line, re.IGNORECASE):
                 state0 = np.array(re.split(' ', re.split('=|#', line)[1][1:]), dtype = float)
             elif re.match('^State 1', line, re.IGNORECASE):
                 state1 = np.array(re.split(' ', re.split('=|#', line)[1][1:]), dtype = float)
+            elif re.match('^correction', line, re.IGNORECASE):
+                correction = re.split('=|#', line)[1].strip()
             elif re.match('^Index', line, re.IGNORECASE):
                 indexgrp = re.split('=|#', line)[1].strip()
             elif re.match('^Atom indicies', line, re.IGNORECASE):
@@ -127,10 +131,35 @@ with open("../../input.in", "r") as input_file:
             elif re.match('^itpfile', line, re.IGNORECASE):
                 itpfile = re.split('=|#', line)[1].strip()
 
+        #Gather parameters from main section for number of CpHMD active molecules
+        elif main_sec:
+            if re.match('^Buffer/surfactant', line, re.IGNORECASE):
+                buf_ratio = int(re.split('=|#', line)[1])
+            elif re.match('^Repeats', line, re.IGNORECASE):
+                num_iter = int(re.split('=|#', line)[1])
+            elif re.match('^END', line):
+                main_sec = False
+
+        #Add parameters for buffer particles
+        elif buf_sec:
+            if re.match('^State 0', line, re.IGNORECASE):
+                state0_buf = float(re.split(' ', re.split('=|#', line)[1])[1])
+            elif re.match('^State 1', line, re.IGNORECASE):
+                state1_buf = float(re.split(' ', re.split('=|#', line)[1])[1])
+            elif re.match('^correction', line, re.IGNORECASE):
+                correction_buf = re.split('=|#', line)[1]
+            elif re.match('^END', line):
+                buf_sec = False
 
 #Calculate required initial lambda and number of buffer particles to ensure the box remains at constant charge CpHMD
 #This is assumed to be neutral at lambda = 0 for all titration sites
+num_buf = buf_ratio
 
+total_charge = (np.sum(state1) - np.sum(state0)) * 0.5
+
+charge_buf =  - total_charge / num_buf
+
+init_lam_buf = (charge_buf - state0_buf) / (state1_buf - state0_buf)
 
 ########### Generate intial structure and topology ###########
 
@@ -162,7 +191,7 @@ os.system("gmx_mpi solvate -cp lrg.gro -cs spc216.gro -o wet.gro -p topol.top")
 
 #Insert buffer particles
 os.system("gmx_mpi grompp -f buf.mdp -c wet.gro -o buf.tpr -p topol.top")
-os.system(f"echo SOL |gmx_mpi genion -s buf.tpr -o buf.gro -pname BUF -np 1 -p topol.top")
+os.system(f"echo SOL |gmx_mpi genion -s buf.tpr -o buf.gro -pname BUF -np {num_buf} -p topol.top")
 
 ########### Generate index.ndx ###########
 
@@ -177,14 +206,15 @@ with open("index.ndx","a") as indexfile:
 
 #MPI ranks and OpenMP threads. Defaults to serial if not provided as environment variables
 try:
-    omp_slots = os.environ["OMP_NUM_THREADS"]
+    os.environ["OMP_NUM_THREADS"]
 except:
-    omp_slots = 1
+    os.system("export OMP_NUM_THREADS=1")
 
 try:
     mpi_ranks = os.environ["NSLOTS"]
 except:
     mpi_ranks = 1
+
 
 #Energy minimization
 os.system("gmx_mpi grompp -f min.mdp -c buf.gro -o min.tpr -maxwarn 2")
@@ -201,13 +231,15 @@ os.system(f"mpirun -n {mpi_ranks} gmx_mpi mdrun -deffnm npt -npme 0")
 ########### Edit md.mdp ###########
 
 #Generate parameter strings for md.mdp file
+buf_mdp = buf_group(num_buf, [state0_buf, state1_buf], correction_buf, init_lam_buf)
+lam_mdp = lambda_group(name, indexgrp, [state0,state1], correction)
 
 #Write parameter strings to md.mdp
 with open("md.mdp","a") as mdfile:
-    mdfile.write(f'\nlambda-dynamics-number-lambda-group-types              = 2\n')
-    mdfile.write(f'lambda-dynamics-number-atom-collections                = 2\n\n')
-    mdfile.write(f'{buf_group()}\n')
-    mdfile.write(lambda_group(name,indexgrp,[state0,state1]))
+    mdfile.write(f'\nlambda-dynamics-number-lambda-group-types              = {index}\n')
+    mdfile.write(f'lambda-dynamics-number-atom-collections                = {index}\n\n')
+    mdfile.write(f'{buf_mdp}\n')
+    mdfile.write(f'{lam_mdp}\n')
 
 ########### Prepare initial files for production ###########
 
@@ -215,17 +247,17 @@ with open("md.mdp","a") as mdfile:
 if os.path.exists("../production"):
     shutil.rmtree("../production")
 os.mkdir("../production")
-shutil.copy2("extract.py", "../production")
+shutil.copy2("titration.py", "../production")
 
-#Generate pH directories and populate with input files
-lam_range = np.linspace(-.1,1.1,13)
+#Generate directories and populate with input files
 
-for lam in lam_range:
-    dirname = f"../production/{lam}"
+for repeat in range(1, num_iter+1):
+    dirname = f"../production/{repeat}"
     os.mkdir(dirname)
     shutil.copy2("npt.gro", dirname)
     shutil.copy2("index.ndx", dirname)
     shutil.copy2("production.py", dirname)
+    shutil.copy2("md.mdp", dirname)
 
     #Point to correct force field directory
     shutil.copy2("topol.top", dirname)
@@ -234,8 +266,3 @@ for lam in lam_range:
         topol = topol.replace("../..", "../../..")
     with open(f"{dirname}/topol.top","w") as topolfile:
         topolfile.write(topol)
-
-    #Add pH parameter to md.mdp
-    shutil.copy2("md.mdp", dirname)
-    with open(f"{dirname}/md.mdp","a") as mdfile:
-        mdfile.write(f'\nlambda-dynamics-atom-set1-initial-lambda               = {lam}\nlambda-dynamics-atom-set2-initial-lambda               = {lam}\n')
