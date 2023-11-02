@@ -112,7 +112,7 @@ num_ions = 0
 
 with open("../../input.in", "r") as input_file:
     for line in input_file:
-        line = line[:-1] 
+        line = line.strip("\n")
         #Check if at the beginning of any sections
         if re.match("^MAIN", line):
             main_sec = True
@@ -120,7 +120,7 @@ with open("../../input.in", "r") as input_file:
             buf_sec = True
 
         #Add parameters for a titration group to the dictionary
-        elif main_sec == False and buf_sec == False:
+        elif not main_sec or not buf_sec:
             if re.match('^Name', line, re.IGNORECASE):
                 titration_dictionary[f'name_{titration_num}'] = re.split('=|#', line)[1].strip()
             elif re.match('^State 0', line, re.IGNORECASE):
@@ -149,7 +149,7 @@ with open("../../input.in", "r") as input_file:
                 titration_num += 1
 
         #Gather parameters from main section for number of CpHMD active molecules
-        elif main_sec == True:
+        elif main_sec:
             if re.match('^Buffer/surfactant', line, re.IGNORECASE):
                 buf_ratio = int(re.split('=|#', line)[1])
             elif re.match('^Number of ions', line, re.IGNORECASE):
@@ -158,7 +158,7 @@ with open("../../input.in", "r") as input_file:
                 main_sec = False
 
         #Add parameters for buffer particles
-        elif buf_sec == True:
+        elif buf_sec:
             if re.match('^State 0', line, re.IGNORECASE):
                 state0_buf = float(re.split(' ', re.split('=|#', line)[1])[1])
             elif re.match('^State 1', line, re.IGNORECASE):

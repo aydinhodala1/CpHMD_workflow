@@ -3,7 +3,7 @@
 integrator               = md                ; md, md-vv, steep, cg ...
 tinit                    = 0                 ; starting time for run (0)
 dt                       = 0.001             ; timestep [ps] (0.001)
-nsteps                   = 1000          ; number of steps (0)
+nsteps                   = 10000000          ; number of steps (0)
 init-step                = 0                 ; starting step (0)
 simulation-part          = 0                 ; if simulation consists of multiple parts (0)
 comm-mode                = Linear            ; mode for center of mass motion removal

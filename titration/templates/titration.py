@@ -6,12 +6,10 @@ from scipy.optimize import curve_fit
 def hill(pHs, n, pka):
 	return 1 / (10 **(n* (pka - pHs))+1)
 
-ideal_pka = 4.75
-
 paths = glob.glob("*/*-coord-*")
 average_lam = []
 pH = []
-eq_time = 0 #ps
+eq_time = 5_000 #ps
 
 for path in paths:
     time,buff,*acids = np.loadtxt(path, comments=["#","@"], unpack=True)
@@ -33,7 +31,6 @@ popt, pcov = curve_fit(hill, pH, average_lam)
 xs = np.linspace(min(pH),max(pH),5000)
 
 plt.plot(pH, average_lam, '.',label = "Simulation data",zorder= 3)
-plt.plot(xs, hill(xs,1,ideal_pka), label = "Ideal curve", zorder = 1)
 plt.plot(xs, hill(xs, popt[0], popt[1]), label = "Fitted curve", zorder = 2)
 plt.legend()
 plt.savefig("titration_curve.pdf")

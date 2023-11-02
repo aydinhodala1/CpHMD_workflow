@@ -1,6 +1,5 @@
 ########### Import modules ###########
 
-import numpy as np
 import os
 import re
 import shutil

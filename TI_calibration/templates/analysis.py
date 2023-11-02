@@ -1,9 +1,23 @@
+########### Import modules ###########
+
 import numpy as np
 import glob
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 
-def poly(x, As):
+########### Define functions ###########
+
+def poly(x: float, As: list) -> list:
+    '''
+    Evaluates polynomial with coefficients As at points x. Accepts numpy arrays
+
+    Inputs:
+    x (float): Point at which to evaluate polynomial
+    As (list): Coefficients for polynomial
+
+    Outputs:
+    y (float): Value of polynomial at point x
+    '''
     rAs = As[::-1]
     x = np.array(x)
     y = np.zeros(len(x))
@@ -11,10 +25,12 @@ def poly(x, As):
         y += a * x ** n
     return y
 
+#Define number of terms for polynomial
 avg_dvdl = []
-avg_dvdl_err = []
 lambdas = []
 num_terms = 7
+
+########### Read in data files ###########
 
 paths = glob.glob("*/avg_dvdl.dat")
 
@@ -23,8 +39,11 @@ for path in paths:
     avg_dvdl.append(dvdl)
     lambdas.append(lam)
 
+########### Fit polynomial to dvdl data ###########
+
 popt, pcov = curve_fit(poly,lambdas, avg_dvdl, p0 = np.zeros(num_terms))
 
+#Plot calibration curve
 xs = np.linspace(-.1,1.1, 1201)
 
 plt.plot(lambdas, avg_dvdl,'.',label = "TI simulation data", zorder = 2)

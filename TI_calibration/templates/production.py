@@ -2,8 +2,6 @@
 
 import os
 import re
-import matplotlib.pyplot as plt
-import numpy as np
 
 ########### Prepare and run  ###########
 
@@ -26,5 +24,3 @@ os.system(f"mpirun -n {mpi_ranks} gmx_mpi mdrun -deffnm pro -npme 0")
 
 #Extract CpHMD data
 os.system(f"gmx_mpi cphmd -s pro.tpr -e pro.edr -coordinate no -dvdl yes")
-
-########### Raw data analysis ###########

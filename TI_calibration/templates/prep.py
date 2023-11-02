@@ -100,7 +100,7 @@ main_sec = False
 
 with open("../../input.in", "r") as input_file:
     for line in input_file:
-        line = line[:-1] 
+        line = line.strip("\n")
         #Check if at the beginning of any sections
         if re.match("^MAIN", line):
             main_sec = True
